@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günter Mobil v9.1.0</title>
+    <title>Günter Mobil v9.2.0</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -30,27 +30,56 @@
     <div id="main-screen" style="display:none;">
         <h3 id="welcome-msg"></h3>
         <div id="job-list"></div>
-        <button onclick="location.reload()" style="background:#444; color:white;">ÇIKIŞ</button>
+        <button onclick="cikisYap()" style="background:#444; color:white; margin-top:20px;">ÇIKIŞ YAP (ŞİFRE SIFIRLA)</button>
     </div>
 
     <script>
         const firebaseConfig = { databaseURL: "https://gunter-erp-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let ustaAdi = ""; let secilenBolum = "";
+        
+        let ustaAdi = ""; 
+        let secilenBolum = "";
+
+        // SAYFA AÇILDIĞINDA OTOMATİK KONTROL ET
+        window.onload = function() {
+            const kayitliUsta = localStorage.getItem('gunter_usta');
+            const kayitliSifre = localStorage.getItem('gunter_sifre');
+            const kayitliBolum = localStorage.getItem('gunter_bolum');
+
+            if(kayitliUsta && kayitliSifre && kayitliBolum) {
+                // Eğer hafızada bilgi varsa direkt giriş yapmayı dene
+                girisDene(kayitliUsta, kayitliSifre, kayitliBolum, true);
+            }
+        };
 
         function sistemiAc() {
-            ustaAdi = document.getElementById('username').value.trim();
-            const sifre = document.getElementById('userpass').value.trim();
-            secilenBolum = document.getElementById('user-dept').value;
-            db.ref('personeller/' + ustaAdi).once('value', (snap) => {
+            const u = document.getElementById('username').value.trim();
+            const s = document.getElementById('userpass').value.trim();
+            const b = document.getElementById('user-dept').value;
+            girisDene(u, s, b, false);
+        }
+
+        function girisDene(u, s, b, otomatik) {
+            db.ref('personeller/' + u).once('value', (snap) => {
                 const p = snap.val();
-                if(p && p.sifre === sifre && p.bolum === secilenBolum) {
+                if(p && p.sifre === s && p.bolum === b) {
+                    // Giriş başarılı, bilgileri hafızaya kaydet
+                    localStorage.setItem('gunter_usta', u);
+                    localStorage.setItem('gunter_sifre', s);
+                    localStorage.setItem('gunter_bolum', b);
+                    
+                    ustaAdi = u;
+                    secilenBolum = b;
+                    
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('main-screen').style.display = 'block';
                     document.getElementById('welcome-msg').innerText = ustaAdi + " [" + secilenBolum + "]";
                     isleriGetir();
-                } else { alert("Hatalı Giriş!"); }
+                } else {
+                    if(!otomatik) alert("Giriş Hatalı!");
+                    else cikisYap(); // Hafızadaki bilgi yanlışsa temizle
+                }
             });
         }
 
@@ -84,6 +113,11 @@
                 if (is && is.tamamlanan > 0) { is.tamamlanan--; }
                 return is;
             });
+        }
+
+        function cikisYap() {
+            localStorage.clear(); // Hafızayı boşalt
+            location.reload();    // Sayfayı yenile
         }
     </script>
 </body>
