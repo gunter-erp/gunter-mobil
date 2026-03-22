@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günter Mobil v9.2.0</title>
+    <title>Günter Mobil v9.3.0</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -11,17 +11,15 @@
         input, select, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         .plus { background: #27ae60; color: white; height: 80px; font-size: 24px; font-weight: bold; }
         .minus { background: #c0392b; color: white; margin-top: 15px; font-weight: bold; }
-        select { background: #34495e; color: white; }
+        .fazla-label { color: #e67e22; font-weight: bold; font-size: 18px; display: block; margin-top: 5px; }
+        .kalan-label { color: #f1c40f; font-weight: bold; }
+        .biten-label { color: #2ecc71; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <h2>GÜNTER ERP GİRİŞ</h2>
-        <select id="user-dept">
-            <option value="Kaynak Bölümü">Kaynak Bölümü</option>
-            <option value="Baskül Montaj">Baskül Montaj</option>
-            <option value="Elektronik Bölümü">Elektronik Bölümü</option>
-        </select>
+        <select id="user-dept"><option value="Kaynak Bölümü">Kaynak Bölümü</option><option value="Baskül Montaj">Baskül Montaj</option><option value="Elektronik Bölümü">Elektronik Bölümü</option></select>
         <input type="text" id="username" placeholder="Usta Adı">
         <input type="password" id="userpass" placeholder="Şifre">
         <button onclick="sistemiAc()" style="background:#8e44ad; color:white;">GİRİŞ YAP</button>
@@ -30,27 +28,20 @@
     <div id="main-screen" style="display:none;">
         <h3 id="welcome-msg"></h3>
         <div id="job-list"></div>
-        <button onclick="cikisYap()" style="background:#444; color:white; margin-top:20px;">ÇIKIŞ YAP (ŞİFRE SIFIRLA)</button>
+        <button onclick="cikisYap()" style="background:#444; color:white; margin-top:20px;">ÇIKIŞ YAP</button>
     </div>
 
     <script>
         const firebaseConfig = { databaseURL: "https://gunter-erp-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
-        let ustaAdi = ""; 
-        let secilenBolum = "";
+        let ustaAdi = ""; let secilenBolum = "";
 
-        // SAYFA AÇILDIĞINDA OTOMATİK KONTROL ET
         window.onload = function() {
-            const kayitliUsta = localStorage.getItem('gunter_usta');
-            const kayitliSifre = localStorage.getItem('gunter_sifre');
-            const kayitliBolum = localStorage.getItem('gunter_bolum');
-
-            if(kayitliUsta && kayitliSifre && kayitliBolum) {
-                // Eğer hafızada bilgi varsa direkt giriş yapmayı dene
-                girisDene(kayitliUsta, kayitliSifre, kayitliBolum, true);
-            }
+            const u = localStorage.getItem('gunter_usta');
+            const s = localStorage.getItem('gunter_sifre');
+            const b = localStorage.getItem('gunter_bolum');
+            if(u && s && b) girisDene(u, s, b, true);
         };
 
         function sistemiAc() {
@@ -60,26 +51,19 @@
             girisDene(u, s, b, false);
         }
 
-        function girisDene(u, s, b, otomatik) {
+        function girisDene(u, s, b, oto) {
             db.ref('personeller/' + u).once('value', (snap) => {
                 const p = snap.val();
                 if(p && p.sifre === s && p.bolum === b) {
-                    // Giriş başarılı, bilgileri hafızaya kaydet
                     localStorage.setItem('gunter_usta', u);
                     localStorage.setItem('gunter_sifre', s);
                     localStorage.setItem('gunter_bolum', b);
-                    
-                    ustaAdi = u;
-                    secilenBolum = b;
-                    
+                    ustaAdi = u; secilenBolum = b;
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('main-screen').style.display = 'block';
                     document.getElementById('welcome-msg').innerText = ustaAdi + " [" + secilenBolum + "]";
                     isleriGetir();
-                } else {
-                    if(!otomatik) alert("Giriş Hatalı!");
-                    else cikisYap(); // Hafızadaki bilgi yanlışsa temizle
-                }
+                } else if(!oto) alert("Hata!");
             });
         }
 
@@ -90,12 +74,17 @@
                 if(data) {
                     Object.keys(data).forEach(id => {
                         const is = data[id];
+                        const kalan = is.hedef - is.tamamlanan > 0 ? is.hedef - is.tamamlanan : 0;
+                        const fazla = is.tamamlanan - is.hedef > 0 ? is.tamamlanan - is.hedef : 0;
+                        
                         list.innerHTML += `
                             <div class="card">
                                 <b>Ürün: ${is.urun}</b><br>
-                                Hedef: ${is.hedef} | <span style="color:#2ecc71">Biten: ${is.tamamlanan}</span> | <span style="color:#f1c40f">Kalan: ${is.hedef - is.tamamlanan}</span>
+                                Hedef: ${is.hedef} | <span class="biten-label">Biten: ${is.tamamlanan}</span><br>
+                                <span class="kalan-label">KALAN: ${kalan}</span>
+                                ${fazla > 0 ? `<span class="fazla-label">⚠️ FAZLA ÜRETİM: ${fazla}</span>` : ''}
                                 <button class="plus" onclick="artir('${id}')">BİR TANE BİTİRDİM (+)</button>
-                                <button class="minus" onclick="azalt('${id}')">Hatalı Bastım (-1)</button>
+                                <button class="minus" onclick="azalt('${id}')">(-1)</button>
                             </div>`;
                     });
                 }
@@ -114,11 +103,7 @@
                 return is;
             });
         }
-
-        function cikisYap() {
-            localStorage.clear(); // Hafızayı boşalt
-            location.reload();    // Sayfayı yenile
-        }
+        function cikisYap() { localStorage.clear(); location.reload(); }
     </script>
 </body>
 </html>
