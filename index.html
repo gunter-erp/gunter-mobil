@@ -3,94 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günter ERP Güvenli Giriş</title>
+    <title>Günter Mobil ERP</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; text-align: center; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #8e44ad; text-align: left; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box;}
+        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; text-align: center; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #8e44ad; text-align: left; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
         button { background: #27ae60; color: white; font-weight: bold; cursor: pointer; }
-        .progress-container { background: #333; border-radius: 5px; height: 10px; margin: 10px 0; }
-        .progress-bar { background: #f1c40f; height: 100%; border-radius: 5px; transition: width 0.3s; }
-        .finished { border-left-color: #2ecc71; }
+        .progress-container { background: #333; border-radius: 5px; height: 12px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { background: #f1c40f; height: 100%; transition: width 0.4s; }
+        .full { background: #2ecc71 !important; }
     </style>
 </head>
 <body>
-    <h2>GÜNTER ERP GÜVENLİK</h2>
-    
+    <h2>GÜNTER GÜVENLİK</h2>
     <div id="login-screen">
         <input type="text" id="username" placeholder="Usta Adınız">
-        <input type="password" id="userpass" placeholder="Şifreniz (4 Hane)">
+        <input type="password" id="userpass" placeholder="Şifreniz">
         <select id="user-dept">
             <option value="Kaynak Bölümü">Kaynak Bölümü</option>
             <option value="Baskül Montaj">Baskül Montaj</option>
             <option value="Elektronik Bölümü">Elektronik Bölümü</option>
         </select>
-        <button onclick="sistemiAc()">GÜVENLİ GİRİŞ</button>
+        <button onclick="sistemiAc()">GİRİŞ YAP</button>
     </div>
 
     <div id="main-screen" style="display:none;">
         <h3 id="welcome-msg"></h3>
         <div id="job-list"></div>
-        <button onclick="location.reload()" style="background:#c0392b">ÇIKIŞ YAP</button>
+        <button onclick="location.reload()" style="background:#c0392b">ÇIKIŞ</button>
     </div>
 
     <script>
         const firebaseConfig = { databaseURL: "https://gunter-erp-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         let ustaAdi = ""; let bolum = "";
 
         function sistemiAc() {
             ustaAdi = document.getElementById('username').value.trim();
-            const girilenSifre = document.getElementById('userpass').value.trim();
+            const sifre = document.getElementById('userpass').value.trim();
             bolum = document.getElementById('user-dept').value;
-            
-            if(!ustaAdi || !girilenSifre) return alert("İsim ve Şifre boş bırakılamaz!");
-
-            db.ref('personeller/' + ustaAdi).once('value', (snapshot) => {
-                const pData = snapshot.val();
-                if(pData && pData.sifre === girilenSifre) {
+            db.ref('personeller/' + ustaAdi).once('value', (snap) => {
+                const p = snap.val();
+                if(p && p.sifre === sifre) {
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('main-screen').style.display = 'block';
-                    document.getElementById('welcome-msg').innerText = "Usta: " + ustaAdi;
+                    document.getElementById('welcome-msg').innerText = ustaAdi + " (" + bolum + ")";
                     isleriGetir();
-                } else {
-                    alert("Hatalı Giriş! Şifreyi kontrol et usta.");
-                }
+                } else { alert("İsim veya Şifre Yanlış!"); }
             });
         }
 
         function isleriGetir() {
-            db.ref('bolum_isleri/' + bolum).on('value', (snapshot) => {
-                const listDiv = document.getElementById('job-list');
-                listDiv.innerHTML = ""; const data = snapshot.val();
+            db.ref('bolum_isleri/' + bolum).on('value', (snap) => {
+                const list = document.getElementById('job-list');
+                list.innerHTML = ""; const data = snap.val();
                 if(data) {
-                    Object.keys(data).forEach(isID => {
-                        const is = data[isID];
-                        const yuzde = (is.tamamlanan / is.hedef) * 100;
-                        listDiv.innerHTML += `
-                            <div class="card ${yuzde >= 100 ? 'finished' : ''}">
+                    Object.keys(data).forEach(id => {
+                        const is = data[id];
+                        const h = is.hedef; const b = is.tamamlanan;
+                        const y = (b / h) * 100;
+                        list.innerHTML += `
+                            <div class="card">
                                 <b>${is.urun}</b><br>
-                                Hedef: ${is.hedef} | Biten: ${is.tamamlanan} | <b>Kalan: ${is.hedef - is.tamamlanan}</b>
-                                <div class="progress-container"><div class="progress-bar" style="width: ${yuzde}%"></div></div>
-                                <input type="number" id="inp-${isID}" placeholder="Toplam Biten">
-                                <button onclick="guncelle('${isID}')" style="background:#2980b9">GÜNCELLE</button>
-                            </div>
-                        `;
+                                Hedef: ${h} | Biten: ${b} | <b>KALAN: ${h - b}</b>
+                                <div class="progress-container"><div class="progress-bar ${y>=100?'full':''}" style="width:${y}%"></div></div>
+                                <input type="number" id="inp-${id}" placeholder="Şu ana kadar toplam biten">
+                                <button onclick="guncelle('${id}')" style="background:#2980b9">ADETİ GÜNCELLE</button>
+                            </div>`;
                     });
-                } else { listDiv.innerHTML = "<p>İş yok usta.</p>"; }
+                } else { list.innerHTML = "İş yok usta."; }
             });
         }
 
-        function guncelle(isID) {
-            const yeniAdet = parseInt(document.getElementById('inp-' + isID).value);
-            if(isNaN(yeniAdet)) return alert("Sayı gir usta!");
-            db.ref('bolum_isleri/' + bolum + '/' + isID).update({
-                tamamlanan: yeniAdet, personel: ustaAdi, durum: "Devam Ediyor"
-            });
+        function guncelle(id) {
+            const val = parseInt(document.getElementById('inp-' + id).value);
+            if(isNaN(val)) return alert("Sayı gir usta!");
+            db.ref('bolum_isleri/' + bolum + '/' + id).update({ tamamlanan: val, personel: ustaAdi });
         }
     </script>
 </body>
