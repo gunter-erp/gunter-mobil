@@ -1,95 +1,131 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günter Mobil ERP v8.2.0</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Günter ERP Mobil v8.3.0</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; text-align: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: white; padding: 20px; text-align: center; }
+        .login-box { background: #1e1e1e; padding: 20px; border-radius: 15px; border: 2px solid #8e44ad; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #8e44ad; text-align: left; }
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
-        button { background: #27ae60; color: white; font-weight: bold; cursor: pointer; }
-        .progress-container { background: #333; border-radius: 5px; height: 12px; margin: 10px 0; overflow: hidden; }
-        .progress-bar { background: #f1c40f; height: 100%; transition: width 0.4s; }
+        input, select, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; font-size: 16px; box-sizing: border-box; background: #252525; color: white; }
+        select { background: #34495e; font-weight: bold; border: 1px solid #8e44ad; cursor: pointer; }
+        button { background: #27ae60; color: white; font-weight: bold; cursor: pointer; border: none; transition: 0.3s; }
+        button:hover { background: #2ecc71; }
+        .progress-container { background: #333; border-radius: 5px; height: 15px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { background: #f1c40f; height: 100%; transition: width 0.5s; }
         .full { background: #2ecc71 !important; }
+        label { display: block; text-align: left; margin-top: 10px; font-weight: bold; color: #8e44ad; }
     </style>
 </head>
 <body>
-    <h2>GÜNTER ERP GÜVENLİK</h2>
-    <div id="login-screen">
-        <input type="text" id="username" placeholder="Usta Adınız">
-        <input type="password" id="userpass" placeholder="Şifreniz">
+    <h2>GÜNTER ELEKTRONİK</h2>
+    
+    <div id="login-screen" class="login-box">
+        <h3>Usta Girişi</h3>
+        
+        <label>Çalıştığınız Bölüm:</label>
         <select id="user-dept">
             <option value="Kaynak Bölümü">Kaynak Bölümü</option>
             <option value="Baskül Montaj">Baskül Montaj</option>
             <option value="Elektronik Bölümü">Elektronik Bölümü</option>
         </select>
-        <button onclick="sistemiAc()">SİSTEME GİRİŞ</button>
+
+        <label>Usta Adı:</label>
+        <input type="text" id="username" placeholder="Örn: Ali">
+        
+        <label>Şifre:</label>
+        <input type="password" id="userpass" placeholder="****">
+        
+        <button onclick="sistemiAc()">SİSTEME GİRİŞ YAP</button>
     </div>
 
     <div id="main-screen" style="display:none;">
-        <h3 id="welcome-msg"></h3>
+        <h3 id="welcome-msg" style="color:#2ecc71;"></h3>
+        <hr border="1" color="#333">
         <div id="job-list"></div>
-        <button onclick="location.reload()" style="background:#c0392b">GÜVENLİ ÇIKIŞ</button>
+        <button onclick="location.reload()" style="background:#c0392b; margin-top:30px;">GÜVENLİ ÇIKIŞ</button>
     </div>
 
     <script>
+        // FIREBASE AYARLARI
         const firebaseConfig = { databaseURL: "https://gunter-erp-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let ustaAdi = ""; let secilenBolum = "";
+
+        let ustaAdi = "";
+        let secilenBolum = "";
 
         function sistemiAc() {
             ustaAdi = document.getElementById('username').value.trim();
             const sifre = document.getElementById('userpass').value.trim();
             secilenBolum = document.getElementById('user-dept').value;
 
+            if(!ustaAdi || !sifre) return alert("İsim ve Şifre gir usta!");
+
+            // Şifre ve Bölüm Kontrolü
             db.ref('personeller/' + ustaAdi).once('value', (snap) => {
                 const p = snap.val();
                 if(p && p.sifre === sifre) {
-                    // Şifre doğru, ama seçtiği bölüm personelin kayıtlı olduğu bölüm mü?
                     if(p.bolum === secilenBolum) {
                         document.getElementById('login-screen').style.display = 'none';
                         document.getElementById('main-screen').style.display = 'block';
-                        document.getElementById('welcome-msg').innerText = ustaAdi + " [" + secilenBolum + "]";
+                        document.getElementById('welcome-msg').innerText = "Hoş Geldin " + ustaAdi + " (" + secilenBolum + ")";
                         isleriGetir();
                     } else {
-                        alert("Hata: Kayıtlı olduğunuz bölümü seçmelisiniz: " + p.bolum);
+                        alert("Hata: Sen " + p.bolum + " ustasısın! Lütfen doğru bölümü seç.");
                     }
-                } else { alert("İsim veya Şifre Hatalı!"); }
+                } else {
+                    alert("Hatalı isim veya şifre usta! Tekrar dene.");
+                }
             });
         }
 
         function isleriGetir() {
             db.ref('bolum_isleri/' + secilenBolum).on('value', (snap) => {
                 const list = document.getElementById('job-list');
-                list.innerHTML = ""; const data = snap.val();
+                list.innerHTML = "";
+                const data = snap.val();
+                
                 if(data) {
                     Object.keys(data).forEach(id => {
                         const is = data[id];
-                        const y = (is.tamamlanan / is.hedef) * 100;
+                        const yuzde = (is.tamamlanan / is.hedef) * 100;
+                        const kalan = is.hedef - is.tamamlanan;
+                        
                         list.innerHTML += `
                             <div class="card">
-                                <b>Ürün: ${is.urun}</b><br>
-                                Hedef: ${is.hedef} | Biten: ${is.tamamlanan} | <b>KALAN: ${is.hedef - is.tamamlanan}</b>
-                                <div class="progress-container"><div class="progress-bar ${y>=100?'full':''}" style="width:${y}%"></div></div>
-                                <input type="number" id="inp-${id}" placeholder="Şu an toplam kaç bitti?">
-                                <button onclick="guncelle('${id}', ${is.hedef})" style="background:#2980b9">GÜNCELLE</button>
-                            </div>`;
+                                <b style="font-size:18px;">Ürün: ${is.urun}</b><br>
+                                <small>İş No: ${id}</small><hr color="#333">
+                                Hedef: <b>${is.hedef}</b> | Biten: <b>${is.tamamlanan}</b><br>
+                                <span style="color:#f1c40f">KALAN: <b>${kalan}</b></span>
+                                
+                                <div class="progress-container">
+                                    <div class="progress-bar ${yuzde >= 100 ? 'full' : ''}" style="width: ${yuzde}%"></div>
+                                </div>
+                                
+                                <input type="number" id="inp-${id}" placeholder="Toplam kaç bitti?">
+                                <button onclick="guncelle('${id}', ${is.hedef})" style="background:#2980b9">ADETİ BİLDİR</button>
+                            </div>
+                        `;
                     });
-                } else { list.innerHTML = "Şu an bu bölümde iş yok usta."; }
+                } else {
+                    list.innerHTML = "<p>Şu an bu tezgahta bekleyen iş yok usta.</p>";
+                }
             });
         }
 
         function guncelle(id, hedef) {
             const val = parseInt(document.getElementById('inp-' + id).value);
-            if(isNaN(val)) return alert("Sayı gir usta!");
-            if(val > hedef) {
-                alert("Hata: Hedeflenen sayıdan (" + hedef + ") daha fazla ürün giremezsin!");
-                return;
-            }
-            db.ref('bolum_isleri/' + secilenBolum + '/' + id).update({ tamamlanan: val, personel: ustaAdi });
+            if(isNaN(val)) return alert("Sayı yaz usta!");
+            if(val > hedef) return alert("Hedefi aşamazsın! En fazla " + hedef + " yazabilirsin.");
+            
+            db.ref('bolum_isleri/' + secilenBolum + '/' + id).update({
+                tamamlanan: val,
+                personel: ustaAdi
+            });
         }
     </script>
 </body>
