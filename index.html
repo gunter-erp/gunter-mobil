@@ -2,24 +2,32 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günter Mobil v9.3.0</title>
+    <title>Günter Mobil v9.5.0</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; text-align: center; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #8e44ad; text-align: left; }
+        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; text-align: center; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #8e44ad; text-align: left; }
         input, select, button { width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
-        .plus { background: #27ae60; color: white; height: 80px; font-size: 24px; font-weight: bold; }
-        .minus { background: #c0392b; color: white; margin-top: 15px; font-weight: bold; }
-        .fazla-label { color: #e67e22; font-weight: bold; font-size: 18px; display: block; margin-top: 5px; }
-        .kalan-label { color: #f1c40f; font-weight: bold; }
-        .biten-label { color: #2ecc71; font-weight: bold; }
+        .plus { background: #27ae60; color: white; height: 60px; font-size: 20px; font-weight: bold; }
+        .minus { background: #c0392b; color: white; margin-top: 10px; padding: 8px; font-size: 14px; }
+        
+        /* BUTON DURUMLARI USTA */
+        .finish-btn { background: #444; color: #888; height: 65px; font-size: 18px; font-weight: bold; margin-top: 15px; cursor: not-allowed; }
+        .finish-active { background: #f39c12; color: white; cursor: pointer; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0px rgba(243, 156, 18, 0.7); } 100% { box-shadow: 0 0 0 15px rgba(243, 156, 18, 0); } }
+        select { background: #34495e; color: white; }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <h2>GÜNTER ERP GİRİŞ</h2>
-        <select id="user-dept"><option value="Kaynak Bölümü">Kaynak Bölümü</option><option value="Baskül Montaj">Baskül Montaj</option><option value="Elektronik Bölümü">Elektronik Bölümü</option></select>
+        <select id="user-dept">
+            <option value="Kaynak Bölümü">Kaynak Bölümü</option>
+            <option value="Baskül Montaj">Baskül Montaj</option>
+            <option value="Elektronik Bölümü">Elektronik Bölümü</option>
+        </select>
         <input type="text" id="username" placeholder="Usta Adı">
         <input type="password" id="userpass" placeholder="Şifre">
         <button onclick="sistemiAc()" style="background:#8e44ad; color:white;">GİRİŞ YAP</button>
@@ -74,20 +82,24 @@
                 if(data) {
                     Object.keys(data).forEach(id => {
                         const is = data[id];
-                        const kalan = is.hedef - is.tamamlanan > 0 ? is.hedef - is.tamamlanan : 0;
-                        const fazla = is.tamamlanan - is.hedef > 0 ? is.tamamlanan - is.hedef : 0;
+                        const tamamlandi = is.tamamlanan >= is.hedef;
                         
                         list.innerHTML += `
                             <div class="card">
                                 <b>Ürün: ${is.urun}</b><br>
-                                Hedef: ${is.hedef} | <span class="biten-label">Biten: ${is.tamamlanan}</span><br>
-                                <span class="kalan-label">KALAN: ${kalan}</span>
-                                ${fazla > 0 ? `<span class="fazla-label">⚠️ FAZLA ÜRETİM: ${fazla}</span>` : ''}
-                                <button class="plus" onclick="artir('${id}')">BİR TANE BİTİRDİM (+)</button>
-                                <button class="minus" onclick="azalt('${id}')">(-1)</button>
+                                Durum: <b>${is.tamamlanan} / ${is.hedef}</b>
+                                <button class="plus" onclick="artir('${id}')">BİR ADET EKLE (+)</button>
+                                
+                                <button class="finish-btn ${tamamlandi ? 'finish-active' : ''}" 
+                                        ${tamamlandi ? '' : 'disabled'} 
+                                        onclick="isiBitir('${id}')">
+                                    ${tamamlandi ? 'İŞİ TAMAMLA VE ARŞİVLE' : 'HEDEF DOLUNCA AKTİF OLUR'}
+                                </button>
+                                
+                                <button class="minus" onclick="azalt('${id}')">HATALI BASTIM (-1)</button>
                             </div>`;
                     });
-                }
+                } else { list.innerHTML = "İş yok."; }
             });
         }
 
@@ -103,6 +115,23 @@
                 return is;
             });
         }
+
+        function isiBitir(id) {
+            if(!confirm("İş emri arşive gönderilecek. Emin misiniz?")) return;
+            db.ref('bolum_isleri/' + secilenBolum + '/' + id).once('value', (snap) => {
+                const isData = snap.val();
+                if(isData) {
+                    const arsivData = {
+                        Tarih: new Date().toLocaleDateString('tr-TR'),
+                        Usta: ustaAdi, Urun: isData.urun, Adet: isData.tamamlanan
+                    };
+                    db.ref('arsiv').push(arsivData, () => {
+                        db.ref('bolum_isleri/' + secilenBolum + '/' + id).remove();
+                    });
+                }
+            });
+        }
+
         function cikisYap() { localStorage.clear(); location.reload(); }
     </script>
 </body>
