@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Günter Mobil v6.9.2</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a2e; color: white; text-align: center; padding: 15px; }
+        .card { background: #16213e; border-radius: 12px; padding: 15px; margin: 10px 0; border: 2px solid #0f3460; }
+        .havuz { border-color: #f1c40f; } .benim { border-color: #2ecc71; }
+        select, input, button { width: 95%; padding: 12px; margin: 8px 0; border-radius: 6px; border: none; font-size: 16px; }
+        button { background: #e94560; color: white; font-weight: bold; cursor: pointer; }
+        .btn-al { background: #f1c40f; color: #1a1a2e; }
+    </style>
+</head>
+<body>
+    <h2>🛠️ GÜNTER USTA PANELİ</h2>
+    <div class="card">
+        <input type="text" id="ustaAd" placeholder="Ad Soyad">
+        <select id="bolumSec">
+            <option>Kaynak Bölümü</option><option>Baskül Montaj</option><option>Elektronik Bölümü</option>
+        </select>
+        <button onclick="izinIste(); isleriGetir();">SİSTEMİ AÇ</button>
+    </div>
+    <div id="isListesi"></div>
+    <audio id="bildirimSesi" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <script>
+        const firebaseConfig = { databaseURL: "https://gunter-erp-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let ilkYukleme = true;
+        function izinIste() { if (Notification.permission !== "granted") Notification.requestPermission(); }
+        function bildirimVer(msg) {
+            document.getElementById('bildirimSesi').play();
+            if (Notification.permission === "granted") new Notification("GÜNTER ERP", { body: msg });
+        }
+        function isleriGetir() {
+            const b = document.getElementById('bolumSec').value;
+            const u = document.getElementById('ustaAd').value;
+            if(!u) return alert("Adını yaz usta!");
+            db.ref('bolum_isleri/' + b).on('value', (snapshot) => {
+                const list = document.getElementById('isListesi');
+                const eskiSayi = list.childElementCount;
+                list.innerHTML = "";
+                const veriler = snapshot.val();
+                let yeniVar = false;
+                for (let id in veriler) {
+                    const is = veriler[id];
+                    const div = document.createElement('div');
+                    if (is.personel === "Henüz Yok") {
+                        div.className = "card havuz";
+                        div.innerHTML = `<strong>📦 ${is.urun}</strong> (${is.hedef} Adet)<br><button class="btn-al" onclick="isiAl('${b}','${id}')">İŞİ ÜZERİME AL</button>`;
+                        yeniVar = true;
+                    } else if (is.personel === u) {
+                        div.className = "card benim";
+                        div.innerHTML = `<strong>✅ İŞİN: ${is.urun}</strong><br>İlerleme: ${is.tamamlanan}/${is.hedef}<br><input type="number" id="a_${id}" placeholder="Biten Adet"><button onclick="guncelle('${b}','${id}')">BİLDİR</button><button onclick="bitir('${b}','${id}')" style="background:#533483">BİTİR</button>`;
+                    } else {
+                        div.className = "card"; div.style.opacity="0.5";
+                        div.innerHTML = `<strong>📦 ${is.urun}</strong><br><small>${is.personel} çalışıyor...</small>`;
+                    }
+                    list.appendChild(div);
+                }
+                if (!ilkYukleme && yeniVar && list.childElementCount > eskiSayi) bildirimVer("Havuzda yeni iş var!");
+                ilkYukleme = false;
+            });
+        }
+        function isiAl(b, id) { db.ref('bolum_isleri/'+b+'/'+id).update({ personel: document.getElementById('ustaAd').value, durum: "Başlandı" }); }
+        function guncelle(b, id) { db.ref('bolum_isleri/'+b+'/'+id).update({ tamamlanan: parseInt(document.getElementById('a_'+id).value) }); }
+        function bitir(b, id) { if(confirm("Bitti mi?")) db.ref('bolum_isleri/'+b+'/'+id).update({ durum: "Tamamlandı" }); }
+    </script>
+</body>
+</html>
